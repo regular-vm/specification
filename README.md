@@ -8,15 +8,32 @@ REGULAR exposes 32, 32-bit registers to the programmer, named sequentially from 
 
 ### Special note for stack-based programming
 
-REGULAR has no special register to indicate the current position of the stack pointer ("the top of the stack", in procedural languages that implement control flow in this way). When implementing code that is expected to function in this manner is recommended that one of the general purpose registers is reserved to serve this purpose. Frequently this is `r31`, and many assemblers alias it to `sp` for this use.
+REGULAR has no special register to indicate the current position of the stack pointer ("the top of the stack", in procedural languages that implement control flow in this way). When implementing code that is expected to function in this manner is recommended that one of the general purpose registers is reserved to serve this purpose. Frequently this is `r31`, and many assemblers alias it to `sp` for this use. In addition, an assembler temporary (commonly `r30`, aliased to `at`) is often reserved for stack manipulation, in which case it has unspecified value for the purposes of general use.
 
 ### Suggested calling convention
 
 To simplify function calls for control flow using a execution stack, it is recommended to implement the interprocedural application binary interface (ABI) as follows:
 
 * Arguments are passed on the stack, in order, followed by any required context. A function's return value, if any, is placed on the stack after this and this structure is torn down by the the caller.
-* All registers are callee-saved. Any registers used by the callee should first be saved to the stack so they can be restored prior to return from the procedure.
+* All registers are callee-saved, except for the assembler temporary. Any registers used by the callee should first be saved to the stack so they can be restored prior to return from the procedure.
 
+In pictures, the stack layout throughout the various stages of a call would look like this:
+
+<p align="center">
+	<img src="https://raw.githubusercontent.com/regular-vm/specification/master/PreCall.svg?sanitize=true">
+</p>
+
+<p align="center">
+	<img src="https://raw.githubusercontent.com/regular-vm/specification/master/TopOfCallee.svg?sanitize=true">
+</p>
+
+<p align="center">
+	<img src="https://raw.githubusercontent.com/regular-vm/specification/master/MiddleOfCallee.svg?sanitize=true">
+</p>
+
+<p align="center">
+	<img src="https://raw.githubusercontent.com/regular-vm/specification/master/AfterCall.svg?sanitize=true">
+</p>
 
 ## Instructions
 
@@ -302,7 +319,6 @@ The bits of each component of these instructions are laid out so that the lower 
 
 ### Instruction set
 
-
 | Name  | Encoding                      | Description |
 |-------|-------------------------------|-------------|
 | `nop` | 0x00                          | Perform no operation. |
@@ -318,9 +334,9 @@ The bits of each component of these instructions are laid out so that the lower 
 | `tcs` | 0x0a&nbsp;rA&nbsp;rB&nbsp;rC  | Subtract the signed value stored in rC from the signed value stored in rB with arbitrary precision and store the sign of the result in rA. |
 | `set` | 0x0b&nbsp;rA&nbsp;imm         | Store, with sign extension, the 16-bit signed value imm into rA. |
 | `mov` | 0x0c&nbsp;rA&nbsp;rB          | Copy the value from rB into rA. |
-| `ldw` | 0x0d&nbsp;rA&nbsp;rB          | Read a 32-bit word from the memory address referred to by rB and store the value into rA. |
-| `stw` | 0x0e&nbsp;rA&nbsp;rB          | Store the value in rB as a 32-bit value at the memory address referred to by rA. |
+| `ldw` | 0x0d&nbsp;rA&nbsp;rB          | Read a 32-bit word from the memory address referred to by rB and store the value into rA. If the address in rB is not word-aligned, the result is implementation-defined. |
+| `stw` | 0x0e&nbsp;rA&nbsp;rB          | Store the value in rB as a 32-bit value at the memory address referred to by rA. If the address in rA is not word-aligned, the result is implementation-defined. |
 | `ldb` | 0x0f&nbsp;rA&nbsp;rB          | Read an 8-bit unsigned byte from the memory address referred to by rB and store the value into rA. The upper 24 bits of rA are unaffected. |
 | `stb` | 0x10&nbsp;rA&nbsp;rB          | Store the lower 8 bits of the value in rB as a byte at the memory address referred to by rA. |
 
-
+To complement this somewhat limited set, most assemblers implement more complex psuedoinstructions built on top of these base instructions by taking advantage of the assembler temporary.
